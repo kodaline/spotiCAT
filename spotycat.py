@@ -1,31 +1,39 @@
-from cat.mad_hatter.decorators import tool, hook, plugin
-from pydantic import BaseModel
-from datetime import datetime, date
+import requests
+import base64
 
-class MySettings(BaseModel):
-    required_int: int
-    optional_int: int = 69
-    required_str: str
-    optional_str: str = "meow"
-    required_date: date
-    optional_date: date = 1679616000
+from cat.mad_hatter.decorators import tool, hook, plugin
+from pydantic import BaseModel, Field
+from .utils import get_spotify_token
+
+
+class SpotifySettings(BaseModel):
+    SPOTIFY_CLIENT_ID: str = Field(
+        title="your spotify client id",
+        description="The Spotify Client ID to connect to, check the plugin README.md for more info",
+        default="",
+        extra={"type": "Text"}
+    )
+    SPOTIFY_CLIENT_SECRET: str = Field(
+        title="your spotify client secret",
+        description="The Spotify Client Secret to connect to, check the plugin README.md for more info",
+        default="",
+        extra={"type": "Text"}
+    )
+
 
 @plugin
-def settings_schema():   
-    return MySettings.schema()
+def settings_model():
+    return SpotifySettings
 
-@tool
-def get_the_day(tool_input, cat):
-    """Get the day of the week. Input is always None."""
+@tool(return_direct=True)
+def play_specific_song_request(tool_input, cat):
+    """Use this tool to play a specific song asked by the User. Input is the song to be played."""
+    scope = "user-read-playback-state,user-modify-playback-state"
 
-    dt = datetime.now()
+    settings = cat.mad_hatter.get_plugin().load_settings()
+    SPOTIFY_CLIENT_ID = settings["SPOTIFY_CLIENT_ID"]
+    SPOTIFY_CLIENT_SECRET = settings["SPOTIFY_CLIENT_SECRET"]
+    token = get_spotify_token(SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET)
 
-    return dt.strftime('%A')
-
-@hook
-def before_cat_sends_message(message, cat):
-
-    prompt = f'Rephrase the following sentence in a grumpy way: {message["content"]}'
-    message["content"] = cat.llm(prompt)
-
-    return message
+    print(f'TOKEN IS \n {token}')
+    return "ciao"
